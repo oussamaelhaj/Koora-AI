@@ -35,15 +35,17 @@ app.get("/latest-news", async (req, res) => {
   try {
     // 1. Construire le prompt pour l'IA avec recherche web
     const prompt = `
-      Cherche sur internet les 4 dernières actualités importantes et variées du football mondial.
-      Pour chaque actualité, fournis les informations dans un format de tableau JSON strict. Le tableau doit contenir 4 objets. Chaque objet doit avoir exactement ces clés : "title", "excerpt", "image", "source".
+      Tu es un commentateur sportif passionné. Cherche sur internet 3 matchs de football importants qui se jouent MAINTENANT ou qui viennent de se terminer.
+      Pour chaque match, rédige un "ticket d'actualité" court et dynamique, comme si tu commentais en direct.
+      Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir exactement ces clés : "title" et "excerpt".
+      - "title": Le nom des deux équipes qui s'affrontent (ex: "Real Madrid vs FC Barcelona").
+      - "excerpt": Un court commentaire de 1-2 phrases sur une action marquante, le score actuel, ou l'enjeu du match (ex: "Quelle tension ! Le score est de 1-1 à la 80ème minute, tout est encore possible !").
+
       Exemple de format de réponse :
       [
         {
-          "title": "Titre de l'actualité",
-          "excerpt": "Un résumé court et percutant de 2 phrases.",
-          "image": "URL complète d'une image pertinente et de haute qualité.",
-          "source": "Le nom du site source (ex: L'Équipe, BBC Sport)"
+          "title": "Manchester United vs Liverpool",
+          "excerpt": "BUT !! Liverpool ouvre le score sur un contre fulgurant ! Le stade est en ébullition !"
         }
       ]
       Ne réponds rien d'autre que le tableau JSON lui-même, sans texte explicatif avant ou après.
@@ -77,7 +79,7 @@ app.get("/latest-news", async (req, res) => {
         throw new Error("Le JSON retourné n'est pas un tableau.");
       }
       newsCache = newsData; // Mettre en cache le résultat
-      setTimeout(() => { newsCache = null; }, 1000 * 60 * 30); // Vider le cache après 30 minutes
+      setTimeout(() => { newsCache = null; }, 1000 * 60 * 10); // Vider le cache après 10 minutes pour des infos plus fraîches
       res.json(newsData);
     } catch (parseError) {
       console.error("Erreur de parsing JSON:", parseError.message);
