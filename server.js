@@ -53,15 +53,22 @@ app.get("/latest-news", async (req, res) => {
     let rawResponse = response.data?.choices?.[0]?.message?.content;
 
     // Nettoyage de la réponse pour extraire uniquement le JSON
-    const jsonMatch = rawResponse.match(/\[[\s\S]*\]/);
+    // On cherche un bloc de code JSON, même s'il est entouré de ```json ... ```
+    const jsonMatch = rawResponse.match(/```json\s*([\s\S]*?)\s*```|(\[[\s\S]*\])/);
     if (!jsonMatch) {
       throw new Error("La réponse de l'IA ne contient pas de JSON valide.");
     }
-    const jsonString = jsonMatch[0];
+    // On prend le premier groupe capturé qui n'est pas vide (soit le contenu du bloc de code, soit le tableau directement)
+    const jsonString = jsonMatch[1] || jsonMatch[2];
 
-    // On parse la chaîne JSON pour la transformer en véritable objet/tableau JSON.
-    res.json(JSON.parse(jsonString)); 
-
+    try {
+      // On parse la chaîne JSON pour la transformer en véritable objet/tableau JSON.
+      const newsData = JSON.parse(jsonString);
+      res.json(newsData);
+    } catch (parseError) {
+      console.error("Erreur de parsing JSON:", parseError.message);
+      throw new Error("Le format JSON renvoyé par l'IA est invalide.");
+    }
   } catch (error) {
     console.error("Erreur lors de la génération des actualités:", error.response ? error.response.data : error.message);
     res.status(500).json({ error: "Impossible de générer les actualités pour le moment." });
