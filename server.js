@@ -26,31 +26,33 @@ app.get("/latest-news", async (req, res) => {
   try {
     // 1. Construire le prompt pour l'IA avec recherche web
     const prompt = `
-      Cherche sur internet les 4 dernières actualités importantes du football mondial.
-      Pour chaque actualité, fournis les informations dans un format JSON strict comme suit :
+      Cherche sur internet les 4 dernières actualités importantes du football mondial (ligues européennes, transferts, etc.).
+      Pour chaque actualité, fournis les informations dans un format de tableau JSON strict. Le tableau doit contenir 4 objets.
+      Chaque objet doit avoir exactement ces clés : "title", "excerpt", "image", "source".
+      Exemple de format de réponse attendu :
       [
         {
           "title": "Titre de l'actualité",
           "excerpt": "Un résumé court et percutant de 2 phrases.",
-          "image": "L'URL complète d'une image pertinente de haute qualité.",
+          "image": "URL complète d'une image pertinente et de haute qualité.",
           "source": "Le nom du site source (ex: L'Équipe, BBC Sport)"
         }
       ]
-      Ne réponds rien d'autre que le tableau JSON.
+      Ne réponds rien d'autre que le tableau JSON lui-même, sans texte avant ou après.
     `;
 
     // 2. Appeler l'IA avec un modèle capable de chercher sur le web
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
       model: "perplexity/pplx-7b-online:free", // Modèle avec recherche web
-      response_format: { "type": "json_object" }, // On demande une réponse JSON
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: { "Authorization": `Bearer ${openRouterApiKey}` }
     });
 
-    // L'IA devrait renvoyer directement un objet JSON contenant une clé avec le tableau
+    // L'IA renvoie une chaîne de caractères qui ressemble à un JSON.
     const generatedNews = response.data?.choices?.[0]?.message?.content;
-    res.json(JSON.parse(generatedNews)); // On parse la chaîne JSON pour l'envoyer au front
+    // On parse la chaîne JSON pour la transformer en véritable objet/tableau JSON.
+    res.json(JSON.parse(generatedNews)); 
 
   } catch (error) {
     console.error("Erreur lors de la génération des actualités:", error.response ? error.response.data : error.message);
