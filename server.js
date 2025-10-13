@@ -1,7 +1,7 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import * as cheerio from "cheerio";
+import * as cheerio from "cheerio"; // Correction de l'import
 import dotenv from "dotenv";
 
 // Charger les variables d'environnement
