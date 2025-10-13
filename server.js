@@ -24,40 +24,33 @@ app.get("/latest-news", async (req, res) => {
   }
 
   try {
-    // 1. Scraper les titres et les images de Elbotola
-    const { data: html } = await axios.get("https://www.elbotola.com/");
-    const $ = cheerio.load(html);
-    let articles = [];
-    $("div.media-object").each((i, el) => {
-      if (i < 4) { // On prend les 4 premiers articles
-        const title = $(el).find("h3.media-title a").text().trim();
-        // Les images sont en lazy-loading, on prend l'URL depuis l'attribut data-src
-        const image = $(el).find("img.media-object-cover").attr('data-src');
-        if (title && image) {
-          articles.push({ title, image });
+    // 1. Construire le prompt pour l'IA avec recherche web
+    const prompt = `
+      Cherche sur internet les 4 dernières actualités importantes du football mondial.
+      Pour chaque actualité, fournis les informations dans un format JSON strict comme suit :
+      [
+        {
+          "title": "Titre de l'actualité",
+          "excerpt": "Un résumé court et percutant de 2 phrases.",
+          "image": "L'URL complète d'une image pertinente de haute qualité.",
+          "source": "Le nom du site source (ex: L'Équipe, BBC Sport)"
         }
-      }
+      ]
+      Ne réponds rien d'autre que le tableau JSON.
+    `;
+
+    // 2. Appeler l'IA avec un modèle capable de chercher sur le web
+    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+      model: "perplexity/pplx-7b-online:free", // Modèle avec recherche web
+      response_format: { "type": "json_object" }, // On demande une réponse JSON
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: { "Authorization": `Bearer ${openRouterApiKey}` }
     });
 
-    // 2. Pour chaque titre, générer un résumé avec l'IA
-    const newsPromises = articles.map(article => 
-      axios.post("https://openrouter.ai/api/v1/chat/completions", {
-        model: "nvidia/nemotron-nano-9b-v2:free",
-        messages: [{ 
-          role: "user", 
-          content: `Tu es un journaliste sportif pour un site de news. Rédige un court paragraphe (2-3 phrases maximum) percutant et informatif basé sur le titre d'actualité suivant : "${article.title}"` 
-        }]
-      }, {
-        headers: { "Authorization": `Bearer ${openRouterApiKey}` }
-      }).then(response => ({
-        title: article.title,
-        image: article.image,
-        excerpt: response.data?.choices?.[0]?.message?.content || "Plus d'informations à venir sur cette actualité."
-      }))
-    );
-
-    const generatedNews = await Promise.all(newsPromises);
-    res.json(generatedNews);
+    // L'IA devrait renvoyer directement un objet JSON contenant une clé avec le tableau
+    const generatedNews = response.data?.choices?.[0]?.message?.content;
+    res.json(JSON.parse(generatedNews)); // On parse la chaîne JSON pour l'envoyer au front
 
   } catch (error) {
     console.error("Erreur lors de la génération des actualités:", error.response ? error.response.data : error.message);
@@ -79,21 +72,10 @@ app.post("/ask-ai", async (req, res) => {
   }
 
   try {
-    // 1. Scraper les dernières actualités de Elbotola
-    const { data: html } = await axios.get("https://www.elbotola.com/");
-    const $ = cheerio.load(html);
-    let news = [];
-    // Cible plus précise pour les titres d'actualités
-    $("h3.media-title a").each((i, el) => {
-      if (i < 5) { // On prend les 5 premiers titres
-        news.push($(el).text().trim());
-      }
-    });
+    // Construire le prompt pour l'IA avec recherche web
+    const prompt = `En te basant sur les informations les plus récentes disponibles sur internet, réponds à la question suivante sur le football comme un journaliste sportif expert : "${question}"`;
 
-    // 2. Construire le prompt pour l'IA
-    const prompt = `Basé sur les dernières actualités du football marocain qui sont : "${news.join('", "')}". Réponds à la question suivante de manière concise et informative comme un journaliste sportif : "${question}"`;
-
-    // 3. Appeler l'API OpenRouter
+    // Appeler l'API OpenRouter avec un modèle de recherche
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
       model: "nvidia/nemotron-nano-9b-v2:free", // ou un autre modèle de votre choix
       messages: [{ role: "user", content: prompt }]
