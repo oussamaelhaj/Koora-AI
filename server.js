@@ -143,10 +143,25 @@ app.get("/latest-stats", async (req, res) => {
       timeout: 45000
     });
 
-    const statsData = JSON.parse(response.data?.choices?.[0]?.message?.content);
-    statsCache = statsData; // Mettre en cache le résultat
-    setTimeout(() => { statsCache = null; }, 1000 * 60 * 60 * 3); // Vider le cache après 3 heures
-    res.json(statsData);
+    let rawResponse = response.data?.choices?.[0]?.message?.content;
+    if (!rawResponse) {
+      throw new Error("La réponse de l'IA pour les statistiques est vide.");
+    }
+
+    try {
+      const statsData = JSON.parse(rawResponse);
+      // Vérification supplémentaire
+      if (typeof statsData !== 'object' || statsData === null || Array.isArray(statsData)) {
+        throw new Error("Le JSON retourné pour les statistiques n'est pas un objet valide.");
+      }
+      statsCache = statsData; // Mettre en cache le résultat
+      setTimeout(() => { statsCache = null; }, 1000 * 60 * 60 * 3); // Vider le cache après 3 heures
+      res.json(statsData);
+    } catch (parseError) {
+      console.error("Erreur de parsing JSON pour les statistiques:", parseError.message);
+      console.error("Réponse brute de l'IA (stats):", rawResponse);
+      throw new Error("Le format JSON renvoyé par l'IA pour les statistiques est invalide.");
+    }
 
   } catch (error) {
     console.error("Erreur lors de la génération des statistiques:", error.response ? error.response.data : error.message);
