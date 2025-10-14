@@ -17,6 +17,7 @@ app.use(express.json()); // Permet de lire le JSON dans les corps de requête
 // Cache en mémoire pour les actualités et les stats pour améliorer la performance
 let statsCache = null;
 let onThisDayCache = null;
+let playerOfTheDayCache = null;
 
 // Endpoint pour les histoires du football
 app.get("/football-stories", async (req, res) => {
@@ -105,6 +106,48 @@ app.get("/on-this-day", async (req, res) => {
   } catch (error) {
     console.error("Erreur lors de la génération de 'On This Day':", error.message);
     res.status(500).json({ error: "Impossible de générer l'histoire du jour." });
+  }
+});
+
+// NOUVEL ENDPOINT : "Joueur du Jour"
+app.get("/player-of-the-day", async (req, res) => {
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!openRouterApiKey) {
+    return res.status(500).json({ error: "Configuration du serveur incomplète." });
+  }
+
+  if (playerOfTheDayCache) {
+    return res.json(playerOfTheDayCache);
+  }
+
+  try {
+    const prompt = `
+      Tu es un biographe sportif. Choisis un joueur de football légendaire (mort ou vivant) et fournis des informations à son sujet au format JSON strict.
+      L'objet doit avoir les clés "name", "bio", "achievements" (un tableau de 3 exploits), et "image_prompt" (une description simple pour une image, ex: "Zinedine Zidane celebrating a goal").
+      Ne réponds rien d'autre que l'objet JSON.
+    `;
+
+    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+      model: "mistralai/mistral-7b-instruct:free",
+      response_format: { "type": "json_object" },
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
+      timeout: 30000
+    });
+
+    const playerData = JSON.parse(response.data?.choices?.[0]?.message?.content);
+    if (typeof playerData !== 'object' || !playerData.name) {
+      throw new Error("La réponse de l'IA pour le joueur du jour est invalide.");
+    }
+
+    playerOfTheDayCache = playerData;
+    setTimeout(() => { playerOfTheDayCache = null; }, 1000 * 60 * 60 * 24); // Cache de 24 heures
+    res.json(playerData);
+  } catch (error) {
+    console.error("Erreur lors de la génération du 'Joueur du Jour':", error.message);
+    res.status(500).json({ error: "Impossible de générer le joueur du jour." });
   }
 });
 
