@@ -53,7 +53,7 @@ app.get("/latest-news", async (req, res) => {
 
     // 2. Appeler l'IA avec un modèle capable de chercher sur le web
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "google/gemini-2.0-flash-experimental:free", // Nouveau modèle expérimental gratuit
+      model: "meta-llama/llama-3-8b-instruct:free", // Modèle gratuit et fiable
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: { "Authorization": `Bearer ${openRouterApiKey}` },
@@ -135,7 +135,7 @@ app.get("/latest-stats", async (req, res) => {
     `;
 
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "google/gemini-2.0-flash-experimental:free", // Nouveau modèle expérimental gratuit
+      model: "meta-llama/llama-3-8b-instruct:free", // Modèle gratuit et fiable
       response_format: { "type": "json_object" },
       messages: [{ role: "user", content: prompt }]
     }, {
@@ -190,7 +190,7 @@ app.post("/ask-ai", async (req, res) => {
 
     // Appeler l'API OpenRouter avec un modèle de recherche
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "google/gemini-2.0-flash-experimental:free", // Nouveau modèle expérimental gratuit
+      model: "meta-llama/llama-3-8b-instruct:free", // Modèle gratuit et fiable
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: {
