@@ -69,8 +69,8 @@ app.get("/football-stories", async (req, res) => {
   }
 
   // Utiliser le cache s'il existe
-  if (storiesCache) { 
-    return res.json(storiesCache);
+  if (storiesCache[league]) { 
+    return res.json(storiesCache[league]);
   }
 
   try {
