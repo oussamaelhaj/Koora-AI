@@ -66,7 +66,7 @@ app.get("/football-stories", async (req, res) => {
 
   try {
     const prompt = `
-      Tu es un conteur passionné par l'histoire du football. Raconte 5 histoires courtes et fascinantes sur des moments légendaires ou des joueurs iconiques (différentes des faits surprenants).
+      Tu es un conteur passionné par l'histoire du football, avec une spécialité sur le championnat marocain (Botola Pro). Raconte 10 histoires courtes et fascinantes sur des moments légendaires, des joueurs iconiques ou des faits surprenants de la Botola Pro.
       Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "story".
       - "title": Un titre accrocheur pour l'histoire (ex: "La Main de Dieu").
       - "story": L'histoire racontée en 2-4 phrases concises et captivantes.
