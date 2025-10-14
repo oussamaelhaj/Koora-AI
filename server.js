@@ -36,10 +36,10 @@ app.get("/latest-news", async (req, res) => {
   try {
     // 1. Construire le prompt pour l'IA
     const prompt = `
-      Tu es un commentateur sportif. Cherche sur internet 3 matchs de football importants qui se jouent MAINTENANT ou qui viennent de se terminer.
-      Pour chaque match, rédige un "ticket d'actualité" court et dynamique.
+      Tu es un journaliste sportif. Cherche sur internet les 4 dernières actualités importantes du football mondial (transferts, résultats marquants, blessures de joueurs clés).
+      Pour chaque actualité, rédige un titre et un court résumé.
       Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "excerpt".
-      Exemple: [{"title": "Real Madrid vs FC Barcelona", "excerpt": "BUT !! Le Real ouvre le score sur une action incroyable !"}]
+      Exemple: [{"title": "Mbappé au Real Madrid", "excerpt": "Le transfert est officiel, l'attaquant français rejoint le club espagnol pour 5 saisons."}]
       Ne réponds rien d'autre que le tableau JSON.
     `;
 
