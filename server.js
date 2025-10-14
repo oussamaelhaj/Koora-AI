@@ -17,6 +17,7 @@ app.use(express.json()); // Permet de lire le JSON dans les corps de requête
 // Cache en mémoire pour les actualités et les stats pour améliorer la performance
 let newsCache = null;
 let statsCache = null;
+let onThisDayCache = null;
 
 // Endpoint pour les actualités "Live"
 app.get("/latest-news", async (req, res) => {
@@ -116,6 +117,48 @@ app.get("/football-stories", async (req, res) => {
     res.status(500).json({ 
       error: "Impossible de générer les histoires pour le moment." 
     });
+  }
+});
+
+// NOUVEL ENDPOINT : "Ce jour-là dans l'histoire"
+app.get("/on-this-day", async (req, res) => {
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!openRouterApiKey) {
+    return res.status(500).json({ error: "Configuration du serveur incomplète." });
+  }
+
+  // Utiliser le cache s'il existe
+  if (onThisDayCache) {
+    return res.json(onThisDayCache);
+  }
+
+  try {
+    const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    const prompt = `
+      Raconte-moi un seul événement marquant de l'histoire du football qui s'est passé le ${today}.
+      Fournis ta réponse dans un format JSON strict avec les clés "title" et "event".
+      - "title": Le titre de l'événement (ex: "La naissance d'une légende").
+      - "event": Une description courte et captivante de l'événement.
+      Ne réponds rien d'autre que l'objet JSON.
+    `;
+
+    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+      model: "mistralai/mistral-7b-instruct:free",
+      response_format: { "type": "json_object" },
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
+      timeout: 30000
+    });
+
+    const onThisDayData = JSON.parse(response.data?.choices?.[0]?.message?.content);
+    onThisDayCache = onThisDayData;
+    setTimeout(() => { onThisDayCache = null; }, 1000 * 60 * 60 * 24); // Vider le cache après 24 heures
+    res.json(onThisDayData);
+  } catch (error) {
+    console.error("Erreur lors de la génération de 'On This Day':", error.message);
+    res.status(500).json({ error: "Impossible de générer l'histoire du jour." });
   }
 });
 
