@@ -1,8 +1,9 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import * as cheerio from "cheerio"; // Correction de l'import
 import dotenv from "dotenv";
+import fs from 'fs/promises';
+import path from 'path';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -10,15 +11,44 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// NOUVEAU : Chemin pour le fichier de cache persistant
+const CACHE_DIR = path.join(process.cwd(), '.cache');
+const STORIES_CACHE_PATH = path.join(CACHE_DIR, 'stories.json');
+
 // Middlewares
 app.use(cors()); // Autorise les requêtes cross-origin (depuis votre HTML)
 app.use(express.json()); // Permet de lire le JSON dans les corps de requête
 
 let lastStoriesData = null; // Pour garder les dernières données valides en cas d'erreur API
 // Cache en mémoire pour les actualités et les stats pour améliorer la performance
-let statsCache = null;
-let onThisDayCache = null;
-let playerOfTheDayCache = null;
+let storiesCache = null;
+
+// NOUVEAU : Fonction pour lire le cache depuis un fichier
+async function readCache() {
+  try {
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    const data = await fs.readFile(STORIES_CACHE_PATH, 'utf8');
+    const cachedData = JSON.parse(data);
+    // Vérifier si le cache a plus de 24 heures
+    if (Date.now() - cachedData.timestamp < 1000 * 60 * 60 * 24) {
+      storiesCache = cachedData.data;
+      lastStoriesData = cachedData.data;
+      console.log("Cache persistant chargé avec succès.");
+    } else {
+      console.log("Le cache persistant a expiré.");
+    }
+  } catch (error) {
+    console.log("Aucun cache persistant trouvé ou erreur de lecture.");
+  }
+}
+
+// NOUVEAU : Fonction pour écrire le cache dans un fichier
+async function writeCache(data) {
+  await fs.mkdir(CACHE_DIR, { recursive: true });
+  const cacheContent = JSON.stringify({ timestamp: Date.now(), data });
+  await fs.writeFile(STORIES_CACHE_PATH, cacheContent, 'utf8');
+  console.log("Cache persistant mis à jour.");
+}
 
 // Endpoint pour les histoires du football
 app.get("/football-stories", async (req, res) => {
@@ -30,8 +60,8 @@ app.get("/football-stories", async (req, res) => {
   }
 
   // Utiliser le cache s'il existe
-  if (statsCache) { 
-    return res.json(statsCache);
+  if (storiesCache) { 
+    return res.json(storiesCache);
   }
 
   try {
@@ -56,9 +86,9 @@ app.get("/football-stories", async (req, res) => {
     if (!jsonMatch) throw new Error("La réponse de l'IA pour les histoires ne contient pas de JSON valide.");
     
     const storiesData = JSON.parse(jsonMatch[0]);
+    await writeCache(storiesData); // Écrire dans le fichier de cache
     lastStoriesData = storiesData; // Sauvegarder les dernières données valides
-    statsCache = storiesData; // On réutilise le même cache
-    setTimeout(() => { statsCache = null; }, 1000 * 60 * 60 * 24); // Vider le cache après 24 heures
+    storiesCache = storiesData; // Mettre à jour le cache en mémoire
     res.json(storiesData);
 
   } catch (error) {
@@ -70,90 +100,6 @@ app.get("/football-stories", async (req, res) => {
     }
     // Sinon, on renvoie une erreur
     res.status(500).json({ error: "Impossible de générer de nouvelles histoires pour le moment. Limite de l'API probablement atteinte." });
-  }
-});
-
-// NOUVEL ENDPOINT : "Ce jour-là dans l'histoire"
-app.get("/on-this-day", async (req, res) => {
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!openRouterApiKey) {
-    return res.status(500).json({ error: "Configuration du serveur incomplète." });
-  }
-
-  // Utiliser le cache s'il existe
-  if (onThisDayCache) {
-    return res.json(onThisDayCache);
-  }
-
-  try {
-    const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-    const prompt = `
-      Raconte-moi un seul événement marquant de l'histoire du football qui s'est passé le ${today}.
-      Fournis ta réponse dans un format JSON strict avec les clés "title" et "event".
-      - "title": Le titre de l'événement (ex: "La naissance d'une légende").
-      - "event": Une description courte et captivante de l'événement.
-      Ne réponds rien d'autre que l'objet JSON.
-    `;
-
-    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "mistralai/mistral-7b-instruct:free",
-      response_format: { "type": "json_object" },
-      messages: [{ role: "user", content: prompt }]
-    }, {
-      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
-      timeout: 30000
-    });
-
-    const onThisDayData = JSON.parse(response.data?.choices?.[0]?.message?.content);
-    onThisDayCache = onThisDayData;
-    setTimeout(() => { onThisDayCache = null; }, 1000 * 60 * 60 * 24); // Vider le cache après 24 heures
-    res.json(onThisDayData);
-  } catch (error) {
-    console.error("Erreur lors de la génération de 'On This Day':", error.message);
-    res.status(500).json({ error: "Impossible de générer l'histoire du jour." });
-  }
-});
-
-// NOUVEL ENDPOINT : "Joueur du Jour"
-app.get("/player-of-the-day", async (req, res) => {
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!openRouterApiKey) {
-    return res.status(500).json({ error: "Configuration du serveur incomplète." });
-  }
-
-  if (playerOfTheDayCache) {
-    return res.json(playerOfTheDayCache);
-  }
-
-  try {
-    const prompt = `
-      Tu es un biographe sportif. Choisis un joueur de football légendaire (mort ou vivant) et fournis des informations à son sujet au format JSON strict.
-      L'objet doit avoir les clés "name", "bio", "achievements" (un tableau de 3 exploits), et "image_prompt" (une description simple pour une image, ex: "Zinedine Zidane celebrating a goal").
-      Ne réponds rien d'autre que l'objet JSON.
-    `;
-
-    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "mistralai/mistral-7b-instruct:free",
-      response_format: { "type": "json_object" },
-      messages: [{ role: "user", content: prompt }]
-    }, {
-      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
-      timeout: 30000
-    });
-
-    const playerData = JSON.parse(response.data?.choices?.[0]?.message?.content);
-    if (typeof playerData !== 'object' || !playerData.name) {
-      throw new Error("La réponse de l'IA pour le joueur du jour est invalide.");
-    }
-
-    playerOfTheDayCache = playerData;
-    setTimeout(() => { playerOfTheDayCache = null; }, 1000 * 60 * 60 * 24); // Cache de 24 heures
-    res.json(playerData);
-  } catch (error) {
-    console.error("Erreur lors de la génération du 'Joueur du Jour':", error.message);
-    res.status(500).json({ error: "Impossible de générer le joueur du jour." });
   }
 });
 
@@ -194,4 +140,8 @@ app.post("/ask-ai", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Koora-AI API démarré sur http://localhost:${PORT}`));
+app.listen(PORT, async () => {
+  // NOUVEAU : Lire le cache au démarrage du serveur
+  await readCache();
+  console.log(`Koora-AI API démarré sur http://localhost:${PORT}`);
+});
