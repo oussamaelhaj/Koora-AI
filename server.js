@@ -104,7 +104,6 @@ app.get("/football-stories", async (req, res) => {
   } catch (error) {
     console.error("Erreur lors de la génération des histoires:", error.message);
     // Si on a des données précédentes en cache, on les sert pour ne pas bloquer l'utilisateur
-    // NOUVEAU : On essaie de lire le fichier de cache en dernier recours
     try {
       const cachePath = path.join(CACHE_DIR, `stories-${league}.json`);
       const data = await fs.readFile(cachePath, 'utf8');
@@ -113,7 +112,6 @@ app.get("/football-stories", async (req, res) => {
       return res.json(cachedData.data);
     } catch (cacheError) {
       console.error("Impossible de lire le cache de secours:", cacheError.message);
-      // Si tout échoue, on renvoie une erreur
       res.status(500).json({ error: "Impossible de générer de nouvelles histoires pour le moment. Limite de l'API probablement atteinte." });
     }
   }
