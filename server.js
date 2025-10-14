@@ -95,7 +95,7 @@ app.get("/football-stories", async (req, res) => {
     console.error("Erreur lors de la génération des histoires:", error.message);
     // Si on a des données précédentes en cache, on les sert pour ne pas bloquer l'utilisateur
     if (lastStoriesData) {
-      console.log("Service des dernières données valides en raison d'une erreur API.");
+      console.log("Erreur API détectée. Service des dernières données valides depuis le cache de secours.");
       return res.json(lastStoriesData);
     }
     // Sinon, on renvoie une erreur
