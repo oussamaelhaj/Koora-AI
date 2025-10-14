@@ -14,17 +14,17 @@ const PORT = process.env.PORT || 3000;
 app.use(cors()); // Autorise les requêtes cross-origin (depuis votre HTML)
 app.use(express.json()); // Permet de lire le JSON dans les corps de requête
 
-// Cache en mémoire pour les actualités et les stats
+// Cache en mémoire pour les actualités et les stats pour améliorer la performance
 let newsCache = null;
 let statsCache = null;
 
-// NOUVEL ENDPOINT POUR LES ACTUALITÉS AUTOMATIQUES
+// Endpoint pour les actualités "Live"
 app.get("/latest-news", async (req, res) => {
   const { force } = req.query; // Récupérer le paramètre 'force' de l'URL
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+  const apiFootballKey = process.env.API_FOOTBALL_KEY;
 
-  if (!openRouterApiKey) {
-    console.error("Clé API OpenRouter manquante.");
+  if (!apiFootballKey) {
+    console.error("Clé API-Football manquante dans les variables d'environnement.");
     return res.status(500).json({ error: "Configuration du serveur incomplète." });
   }
 
