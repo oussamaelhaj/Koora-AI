@@ -104,9 +104,9 @@ app.get("/football-stories", async (req, res) => {
   } catch (error) {
     console.error("Erreur lors de la génération des histoires:", error.message);
     // Si on a des données précédentes en cache, on les sert pour ne pas bloquer l'utilisateur
-    if (lastStoriesData) {
+    if (storiesCache[league]) {
       console.log("Erreur API détectée. Service des dernières données valides depuis le cache de secours.");
-      return res.json(lastStoriesData);
+      return res.json(storiesCache[league]);
     }
     // Sinon, on renvoie une erreur
     res.status(500).json({ error: "Impossible de générer de nouvelles histoires pour le moment. Limite de l'API probablement atteinte." });
