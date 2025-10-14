@@ -19,59 +19,6 @@ let newsCache = null;
 let statsCache = null;
 let onThisDayCache = null;
 
-// Endpoint pour les actualités "Live"
-app.get("/latest-news", async (req, res) => {
-  const { force } = req.query; // Récupérer le paramètre 'force' de l'URL
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!openRouterApiKey) {
-    console.error("Clé API OpenRouter manquante dans les variables d'environnement.");
-    return res.status(500).json({ error: "Configuration du serveur incomplète." });
-  }
-
-  // Si on a des données en cache, on les renvoie directement
-  if (newsCache && !force) { // Ignorer le cache si force=true
-    return res.json(newsCache);
-  }
-
-  try {
-    // 1. Construire le prompt pour l'IA
-    const prompt = `
-      Tu es un expert en football. Raconte 5 faits surprenants ou records incroyables de l'histoire du football.
-      Chaque fait doit avoir un titre et un court résumé.
-      Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "excerpt".
-      Exemple: [{"title": "Le but le plus rapide", "excerpt": "Le but le plus rapide de l'histoire a été marqué en seulement 2.4 secondes par Nawaf Al-Abed."}]
-      Ne réponds rien d'autre que le tableau JSON.
-    `;
-
-    // 2. Appeler l'IA
-    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "mistralai/mistral-7b-instruct:free", // Modèle gratuit et stable
-      messages: [{ role: "user", content: prompt }]
-    }, {
-      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
-      timeout: 30000
-    });
-
-    let rawResponse = response.data?.choices?.[0]?.message?.content;
-    const jsonMatch = rawResponse.match(/(\[[\s\S]*\])/);
-    if (!jsonMatch) throw new Error("La réponse de l'IA pour les news ne contient pas de JSON valide.");
-    
-    const newsData = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(newsData)) throw new Error("Le JSON des news n'est pas un tableau.");
-
-    newsCache = newsData;
-    setTimeout(() => { newsCache = null; }, 1000 * 60 * 60 * 24); // Vider le cache après 24 heures
-    res.json(newsData);
-
-  } catch (error) {
-    console.error("Erreur lors de la génération des actualités:", error.message);
-    res.status(500).json({ 
-      error: "Impossible de générer les actualités pour le moment." 
-    });
-  }
-});
-
 // Endpoint pour les histoires du football
 app.get("/football-stories", async (req, res) => {
   const openRouterApiKey = process.env.OPENROUTER_API_KEY;
@@ -88,7 +35,7 @@ app.get("/football-stories", async (req, res) => {
 
   try {
     const prompt = `
-      Tu es un conteur passionné par l'histoire du football. Raconte 5 histoires courtes et fascinantes sur des moments légendaires ou des joueurs iconiques (différentes des faits surprenants).
+      Tu es un conteur passionné par l'histoire du football. Raconte 10 histoires courtes et fascinantes sur des moments légendaires, des joueurs iconiques ou des faits surprenants du football.
       Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "story".
       - "title": Un titre accrocheur pour l'histoire (ex: "La Main de Dieu").
       - "story": L'histoire racontée en 2-4 phrases concises et captivantes.
