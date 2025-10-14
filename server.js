@@ -71,8 +71,8 @@ app.get("/latest-news", async (req, res) => {
   }
 });
 
-// Endpoint pour les statistiques
-app.get("/latest-stats", async (req, res) => {
+// Endpoint pour les histoires du football
+app.get("/football-stories", async (req, res) => {
   const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 
   if (!openRouterApiKey) {
@@ -80,38 +80,41 @@ app.get("/latest-stats", async (req, res) => {
     return res.status(500).json({ error: "Configuration du serveur incomplète." });
   }
 
+  // Utiliser le cache s'il existe
   if (statsCache) {
     return res.json(statsCache);
   }
 
   try {
     const prompt = `
-      Cherche sur internet les statistiques de football les plus récentes pour la saison en cours.
-      Fournis les informations dans un format JSON strict avec exactement ces trois clés : "topScorers", "possession", "goalsByLeague".
-      - "topScorers": un tableau des 5 meilleurs buteurs d'un grand championnat européen (ex: La Liga), chaque objet avec "name" et "goals".
-      - "possession": un tableau des 5 équipes avec la meilleure possession de balle en Europe, chaque objet avec "team" et "percentage".
-      - "goalsByLeague": un tableau des 5 grands championnats européens, chaque objet avec "league" et "avgGoals".
+      Tu es un conteur passionné par l'histoire du football. Raconte 3 anecdotes ou histoires courtes et fascinantes sur des moments légendaires, des joueurs iconiques ou des faits surprenants du football.
+      Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "story".
+      - "title": Un titre accrocheur pour l'histoire (ex: "La Main de Dieu").
+      - "story": L'histoire racontée en 2-3 phrases concises et captivantes.
       Ne réponds rien d'autre que l'objet JSON.
     `;
 
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
       model: "mistralai/mistral-7b-instruct:free", // Modèle gratuit et stable
-      response_format: { "type": "json_object" },
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: { "Authorization": `Bearer ${openRouterApiKey}` },
       timeout: 45000
     });
 
-    const statsData = JSON.parse(response.data?.choices?.[0]?.message?.content);
-    statsCache = statsData;
-    setTimeout(() => { statsCache = null; }, 1000 * 60 * 60 * 3); // Cache de 3 heures
-    res.json(statsData);
+    let rawResponse = response.data?.choices?.[0]?.message?.content;
+    const jsonMatch = rawResponse.match(/(\[[\s\S]*\])/);
+    if (!jsonMatch) throw new Error("La réponse de l'IA pour les histoires ne contient pas de JSON valide.");
+    
+    const storiesData = JSON.parse(jsonMatch[0]);
+    statsCache = storiesData; // On réutilise le même cache
+    setTimeout(() => { statsCache = null; }, 1000 * 60 * 60 * 6); // Vider le cache après 6 heures
+    res.json(storiesData);
 
   } catch (error) {
-    console.error("Erreur lors de la génération des statistiques:", error.message);
+    console.error("Erreur lors de la génération des histoires:", error.message);
     res.status(500).json({ 
-      error: "Impossible de générer les statistiques pour le moment." 
+      error: "Impossible de générer les histoires pour le moment." 
     });
   }
 });
