@@ -74,7 +74,7 @@ app.get("/football-stories", async (req, res) => {
     `;
 
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "mistralai/mistral-7b-instruct:free", // Modèle gratuit et stable
+      model: "deepseek/deepseek-chat", // Modèle gratuit DeepSeek
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: { "Authorization": `Bearer ${openRouterApiKey}` },
@@ -122,7 +122,7 @@ app.post("/ask-ai", async (req, res) => {
 
     // Appeler l'API OpenRouter avec un modèle de recherche
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "mistralai/mistral-7b-instruct:free", // Modèle gratuit et stable
+      model: "deepseek/deepseek-chat", // Modèle gratuit DeepSeek
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: {
