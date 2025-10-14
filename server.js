@@ -21,10 +21,10 @@ let statsCache = null;
 // Endpoint pour les actualités "Live"
 app.get("/latest-news", async (req, res) => {
   const { force } = req.query; // Récupérer le paramètre 'force' de l'URL
-  const apiFootballKey = process.env.API_FOOTBALL_KEY;
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 
-  if (!apiFootballKey) {
-    console.error("Clé API-Football manquante dans les variables d'environnement.");
+  if (!openRouterApiKey) {
+    console.error("Clé API OpenRouter manquante dans les variables d'environnement.");
     return res.status(500).json({ error: "Configuration du serveur incomplète." });
   }
 
@@ -34,108 +34,84 @@ app.get("/latest-news", async (req, res) => {
   }
 
   try {
-    // 1. Appeler l'API-Football pour les matchs en direct
-    const response = await axios.get("https://v3.football.api-sports.io/fixtures", {
-      params: { live: 'all' },
-      headers: { 'x-apisports-key': apiFootballKey }
+    // 1. Construire le prompt pour l'IA
+    const prompt = `
+      Tu es un commentateur sportif. Cherche sur internet 3 matchs de football importants qui se jouent MAINTENANT ou qui viennent de se terminer.
+      Pour chaque match, rédige un "ticket d'actualité" court et dynamique.
+      Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "excerpt".
+      Exemple: [{"title": "Real Madrid vs FC Barcelona", "excerpt": "BUT !! Le Real ouvre le score sur une action incroyable !"}]
+      Ne réponds rien d'autre que le tableau JSON.
+    `;
+
+    // 2. Appeler l'IA
+    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+      model: "meta-llama/llama-3-8b-instruct:free",
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
+      timeout: 30000
     });
 
-    // 2. Vérifier si l'API a renvoyé des erreurs
-    if (response.data.errors && Object.keys(response.data.errors).length > 0) {
-      console.error("Erreur de l'API-Football (fixtures):", response.data.errors);
-      throw new Error("La clé API-Football est peut-être invalide ou le quota est dépassé.");
-    }
+    let rawResponse = response.data?.choices?.[0]?.message?.content;
+    const jsonMatch = rawResponse.match(/(\[[\s\S]*\])/);
+    if (!jsonMatch) throw new Error("La réponse de l'IA pour les news ne contient pas de JSON valide.");
+    
+    const newsData = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(newsData)) throw new Error("Le JSON des news n'est pas un tableau.");
 
-    // 3. Formater les données pour le front-end
-    const fixtures = response.data.response;
-    if (fixtures.length === 0) {
-      return res.json([{ title: "Aucun match en direct actuellement", excerpt: "Revenez plus tard pour les prochains matchs." }]);
-    }
-
-    const newsData = fixtures.slice(0, 5).map(fixture => {
-      const homeTeam = fixture.teams.home.name;
-      const awayTeam = fixture.teams.away.name;
-      const score = `${fixture.goals.home} - ${fixture.goals.away}`;
-      const minute = fixture.fixture.status.elapsed;
-
-      return {
-        title: `${homeTeam} vs ${awayTeam}`,
-        excerpt: `Score: ${score} (${minute}') - ${fixture.league.name}`
-      };
-    });
-
-    newsCache = newsData; // Mettre en cache le résultat
-    setTimeout(() => { newsCache = null; }, 1000 * 60 * 5); // Vider le cache après 5 minutes
+    newsCache = newsData;
+    setTimeout(() => { newsCache = null; }, 1000 * 60 * 10); // Cache de 10 minutes
     res.json(newsData);
 
   } catch (error) {
-    console.error("Erreur lors de la récupération des actualités:", error.message);
-    // Renvoyer un message d'erreur clair au front-end
+    console.error("Erreur lors de la génération des actualités:", error.message);
     res.status(500).json({ 
-      error: "Impossible de récupérer les actualités depuis l'API de football." 
+      error: "Impossible de générer les actualités pour le moment." 
     });
   }
 });
 
-// NOUVEL ENDPOINT POUR LES STATISTIQUES AUTOMATIQUES
+// Endpoint pour les statistiques
 app.get("/latest-stats", async (req, res) => {
-  const apiFootballKey = process.env.API_FOOTBALL_KEY;
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 
-  if (!apiFootballKey) {
-    console.error("Clé API-Football manquante dans les variables d'environnement.");
+  if (!openRouterApiKey) {
+    console.error("Clé API OpenRouter manquante dans les variables d'environnement.");
     return res.status(500).json({ error: "Configuration du serveur incomplète." });
   }
 
-  // Si on a des données en cache, on les renvoie directement
   if (statsCache) {
     return res.json(statsCache);
   }
 
   try {
-    // 1. Meilleurs buteurs (La Liga - ID 140, Saison 2023)
-    const topScorersResponse = await axios.get("https://v3.football.api-sports.io/players/topscorers", {
-      params: { league: '140', season: '2023' },
-      headers: { 'x-apisports-key': apiFootballKey }
+    const prompt = `
+      Cherche sur internet les statistiques de football les plus récentes pour la saison en cours.
+      Fournis les informations dans un format JSON strict avec exactement ces trois clés : "topScorers", "possession", "goalsByLeague".
+      - "topScorers": un tableau des 5 meilleurs buteurs d'un grand championnat européen (ex: La Liga), chaque objet avec "name" et "goals".
+      - "possession": un tableau des 5 équipes avec la meilleure possession de balle en Europe, chaque objet avec "team" et "percentage".
+      - "goalsByLeague": un tableau des 5 grands championnats européens, chaque objet avec "league" et "avgGoals".
+      Ne réponds rien d'autre que l'objet JSON.
+    `;
+
+    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+      model: "meta-llama/llama-3-8b-instruct:free",
+      response_format: { "type": "json_object" },
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
+      timeout: 45000
     });
 
-    if (topScorersResponse.data.errors && Object.keys(topScorersResponse.data.errors).length > 0) {
-      console.error("Erreur de l'API-Football (topscorers):", topScorersResponse.data.errors);
-      throw new Error("La clé API-Football est peut-être invalide ou le quota est dépassé.");
-    }
-
-    const topScorers = topScorersResponse.data.response.slice(0, 5).map(p => ({
-      name: p.player.name,
-      goals: p.statistics[0].goals.total
-    }));
-
-    // 2. Possession (Premier League - ID 39)
-    const possessionResponse = await axios.get("https://v3.football.api-sports.io/teams/statistics", {
-      params: { league: '39', season: '2023', team: '40' }, // Exemple avec Man Utd, l'API ne donne pas de classement simple
-      headers: { 'x-apisports-key': apiFootballKey }
-    });
-    const possession = [
-      { team: "Man City", percentage: 65.5 }, { team: "Arsenal", percentage: 62.1 },
-      { team: "Liverpool", percentage: 61.8 }, { team: "Chelsea", percentage: 60.5 },
-      { team: "Brighton", percentage: 59.9 }
-    ];
-
-    // 3. Buts par championnat
-    // Note: L'API ne donne pas facilement cette stat, nous simulons des données pour l'exemple.
-    const goalsByLeague = [
-      { league: "Bundesliga", avgGoals: 3.21 }, { league: "Premier League", avgGoals: 3.15 },
-      { league: "Ligue 1", avgGoals: 2.90 }, { league: "Serie A", avgGoals: 2.85 },
-      { league: "La Liga", avgGoals: 2.75 }
-    ];
-
-    const statsData = { topScorers, possession, goalsByLeague };
+    const statsData = JSON.parse(response.data?.choices?.[0]?.message?.content);
     statsCache = statsData;
-    setTimeout(() => { statsCache = null; }, 1000 * 60 * 60 * 6); // Cache de 6 heures
+    setTimeout(() => { statsCache = null; }, 1000 * 60 * 60 * 3); // Cache de 3 heures
     res.json(statsData);
 
   } catch (error) {
     console.error("Erreur lors de la génération des statistiques:", error.message);
     res.status(500).json({ 
-      error: "Impossible de récupérer les statistiques depuis l'API de football." 
+      error: "Impossible de générer les statistiques pour le moment." 
     });
   }
 });
