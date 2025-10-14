@@ -15,7 +15,6 @@ app.use(cors()); // Autorise les requêtes cross-origin (depuis votre HTML)
 app.use(express.json()); // Permet de lire le JSON dans les corps de requête
 
 // Cache en mémoire pour les actualités et les stats pour améliorer la performance
-let newsCache = null;
 let statsCache = null;
 let onThisDayCache = null;
 
@@ -35,7 +34,7 @@ app.get("/football-stories", async (req, res) => {
 
   try {
     const prompt = `
-      Tu es un conteur passionné par l'histoire du football. Raconte 10 histoires courtes et fascinantes sur des moments légendaires, des joueurs iconiques ou des faits surprenants du football.
+      Tu es un conteur passionné par l'histoire du football. Raconte 5 histoires courtes et fascinantes sur des moments légendaires ou des joueurs iconiques (différentes des faits surprenants).
       Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "story".
       - "title": Un titre accrocheur pour l'histoire (ex: "La Main de Dieu").
       - "story": L'histoire racontée en 2-4 phrases concises et captivantes.
