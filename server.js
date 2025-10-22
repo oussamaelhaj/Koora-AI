@@ -16,7 +16,7 @@ const CACHE_DIR = path.join(process.cwd(), '.cache');
 const STORIES_CACHE_PATH = path.join(CACHE_DIR, 'stories.json');
 
 // Middlewares
-app.use(cors()); // Autorise les requêtes cross-origin
+app.use(cors()); // Autorise les requêtes cross-origin (depuis votre HTML)
 app.use(express.json());
 
 let storiesCache = null; // Cache en mémoire pour les histoires
