@@ -109,9 +109,8 @@ app.get("/football-stories", async (req, res) => {
       console.log("Erreur API détectée. Service des dernières données valides depuis le cache persistant.");
       res.json(cachedData.data);
     } catch (cacheError) {
-      // ULTIME SECOURS : Servir les données par défaut
-      console.log("Impossible de lire le cache de secours. Service des histoires par défaut.");
-      console.log("Service des histoires par défaut.");
+      // ULTIME SECOURS : Le cache n'existe pas, servir les données par défaut
+      console.log("Cache de secours non trouvé. Service des histoires par défaut.");
       res.status(500).json(defaultStories);
     }
   }
