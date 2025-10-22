@@ -76,18 +76,28 @@ app.get("/football-stories", async (req, res) => {
   }
 
   try {
-    const prompt = `
-      Tu es un conteur passionné par l'histoire du football. Raconte 10 histoires courtes et fascinantes sur des moments légendaires, des joueurs iconiques ou des faits surprenants du football mondial.
-      Fournis ta réponse dans un format de tableau JSON strict. Chaque objet doit avoir les clés "title" et "story".
-      - "story": L'histoire racontée en 2-4 phrases concises et captivantes.
-      Ne réponds rien d'autre que l'objet JSON.
+    const prompt = `Tu es un expert en contenu sportif et SEO pour un site web de football. Ta mission est de générer une liste de 10 contenus variés et captivants pour attirer et retenir les visiteurs.
+
+Fournis ta réponse exclusivement sous la forme d'un tableau JSON. Chaque objet dans le tableau doit contenir les clés "title" et "story".
+
+Voici les types de contenu à inclure :
+1.  **Histoires Historiques :** Raconte des anecdotes méconnues ou des moments fondateurs de l'histoire du football.
+2.  **Records Incroyables :** Présente des records du monde du football (plus de buts, plus longue invincibilité, etc.) avec des détails surprenants.
+3.  **Leçons de Motivation :** Tire des leçons de vie et de motivation à partir de la carrière de joueurs légendaires ou de retours spectaculaires (comebacks).
+4.  **Sujets Tendance (SEO) :** Crée des titres et des paragraphes courts sur des sujets d'actualité ou des débats populaires ("Qui est le GOAT ?", "Les futurs cracks du football", etc.) en utilisant des mots-clés pertinents.
+
+Assure-toi que les titres ("title") sont accrocheurs et optimisés pour le référencement (SEO), et que les contenus ("story") sont concis (2-4 phrases) et engageants.
     `;
 
     const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-      model: "deepseek/deepseek-chat",
+      model: "mistralai/devstral-small-2505:free",
       messages: [{ role: "user", content: prompt }]
     }, {
-      headers: { "Authorization": `Bearer ${openRouterApiKey}` },
+      headers: {
+        "Authorization": `Bearer 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`,
+        "HTTP-Referer": "https://koorazonefoot.com", // URL de votre site pour les classements OpenRouter
+        "X-Title": "Koorazone Foot" // Nom de votre site
+      },
       timeout: 45000
     });
 
