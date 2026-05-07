@@ -32,10 +32,6 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [],
-    "extra": {
-      "eas": {
-        "projectId": "koorazone-foot"
-      }
-    }
+    "extra": {}
   }
 }
