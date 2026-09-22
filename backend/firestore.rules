@@ -1,0 +1,23 @@
+// Firestore security rules for the koorazone-e59a7 project.
+// Deploy with: firebase deploy --only firestore:rules --project koorazone-e59a7
+// (requires a firebase.json in this folder pointing rules at this file, or
+// pass --config; simplest is to paste this into Firebase Console > Firestore
+// Database > Rules and click Publish).
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public, read-only: the Blogger theme reads these client-side with the
+    // public web apiKey. All writes happen only from football-backend's
+    // Firebase Admin SDK, which always bypasses these rules — so no write
+    // path needs to be opened here at all.
+    match /football/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

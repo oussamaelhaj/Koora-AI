@@ -1,0 +1,29 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Only the football-backend (Top Scorers service for the KOORAZONE Blogger
+# theme) deploys from this repo via Blueprint. The KOORAZONE FOOT mobile app
+# at the repo root (Expo/React Native) is not a Render service — it's built
+# and published through EAS (see eas.json), not this file.
+#
+# NOTE: koora-ai.onrender.com already exists and was not created from this
+# file, so Render won't auto-adopt it — see backend/README.md "Deploy to
+# Render" for how to point it at backend/ (or create a fresh service here).
+services:
+  - type: web
+    name: koora-ai-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: FOOTBALL_API_KEY
+        sync: false
+      - key: REFRESH_TOKEN
+        sync: false
+      - key: FOOTBALL_LEAGUES
+        value: "39:Premier League,140:LaLiga"
+      - key: STANDINGS_POLL_HOURS
+        value: "6"
