@@ -5,6 +5,7 @@ const helmet = require('helmet');
 
 const admin = require('./firebase-admin');
 const { fetchTopScorers } = require('./footballApi');
+const { FOOTBALL_STORIES } = require('./footballStories');
 
 const db = admin.firestore();
 
@@ -48,6 +49,14 @@ app.use(helmet());
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, service: 'koorazone-football-backend', time: new Date().toISOString() });
+});
+
+// Served to the KOORAZONE FOOT mobile app (src/services/api.ts). Public,
+// read-only, no CORS restriction needed — this is editorial content, not
+// user data.
+app.get('/football-stories', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.json(FOOTBALL_STORIES);
 });
 
 // Manual trigger for testing/debugging — guard with a shared secret so it
