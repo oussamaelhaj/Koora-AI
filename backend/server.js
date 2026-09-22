@@ -3,11 +3,22 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 
-const admin = require('./firebase-admin');
 const { fetchTopScorers } = require('./footballApi');
 const { FOOTBALL_STORIES } = require('./footballStories');
 
-const db = admin.firestore();
+// Lazy: only touched inside refreshScorers(), so a missing/invalid
+// FIREBASE_SERVICE_ACCOUNT can't crash the whole process at boot — routes
+// that don't need Firestore (like /football-stories, /api/health) still work.
+let firebaseAdmin = null;
+function getDb() {
+  try {
+    if (!firebaseAdmin) firebaseAdmin = require('./firebase-admin');
+    return firebaseAdmin.firestore();
+  } catch (err) {
+    console.error('[firestore] unavailable — set FIREBASE_SERVICE_ACCOUNT to enable top scorers:', err.message);
+    return null;
+  }
+}
 
 // --- Quota budget (API-Football free tier = 100 requests/day) -------------
 // Live scores and standings are fetched client-side from worldcup26.ir now
@@ -27,6 +38,8 @@ const LEAGUES = (process.env.FOOTBALL_LEAGUES || '39:Premier League,140:LaLiga')
 const SEASON = Number(process.env.FOOTBALL_SEASON || new Date().getFullYear());
 
 async function refreshScorers() {
+  const db = getDb();
+  if (!db) return;
   for (const league of LEAGUES) {
     try {
       const topScorers = await fetchTopScorers(league.id, SEASON);
@@ -34,7 +47,7 @@ async function refreshScorers() {
         league: league.name,
         leagueId: league.id,
         players: topScorers,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       });
       console.log(`[scorers] wrote league ${league.name}`);
     } catch (err) {
